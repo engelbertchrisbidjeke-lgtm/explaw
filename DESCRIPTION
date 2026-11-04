@@ -1,0 +1,15 @@
+Package: explaw
+Type: Package
+Title: Reliability Analysis Package Based on Exponential Law Principles | Package d'Analyse Fiabilité via les Principes de Loi Exponentielles
+Version: 0.1.0
+Authors@R: c(
+    person(
+      "chris", "bidjeke",
+      email = "chrisbidjeke@gmail.com",
+      role = c("aut", "cre")
+    )
+  )
+Description: This package aims to support reliability analysis using a specific statistical distribution, the Exponential distribution. | Ce package vise à prendre en charge l'analyse de la fiabilité en utilisant une statistique spécifique, la Loi Exponentielle.
+License: Apache License (== 2.0)
+Encoding: UTF-8
+LazyData: true
