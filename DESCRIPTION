@@ -10,6 +10,16 @@ Authors@R: c(
     )
   )
 Description: This package aims to support reliability analysis using a specific statistical distribution, the Exponential distribution. | Ce package vise à prendre en charge l'analyse de la fiabilité en utilisant une statistique spécifique, la Loi Exponentielle.
-License: Apache License (== 2.0)
+License: Apache License (>= 2)
 Encoding: UTF-8
 LazyData: true
+Config/roxygen2/version: 8.1.1
+Suggests: 
+    knitr,
+    MASS,
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Imports: 
+    ggplot2
+VignetteBuilder: knitr

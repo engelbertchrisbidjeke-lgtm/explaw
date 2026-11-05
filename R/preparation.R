@@ -1,3 +1,39 @@
+#' Prepare raw data for survival analysis
+#'
+#' Standardizes a raw data frame so that all other functions in the package
+#' can use a common format. Renames the time, event and (optional) group
+#' columns to `time`, `event` and `group`, checks their types, removes
+#' invalid rows (missing values, negative times), and puts the key columns
+#' first.
+#'
+#' @param data A `data.frame` containing at least a time column and an
+#'   event column.
+#' @param time_col Character. Name of the column holding the observed
+#'   durations. Must be numeric and non-negative.
+#' @param event_col Character. Name of the column holding the event
+#'   indicator. Must contain only `0` (censored) and `1` (event observed).
+#'   `NA` values are tolerated and removed.
+#' @param group_col Character or `NULL` (default). Optional name of a
+#'   grouping column (e.g. production lot, test condition). When supplied,
+#'   it is renamed to `group`.
+#'
+#' @return A `data.frame` with at least the columns `time` and `event`
+#'   (and `group` if `group_col` is provided), followed by all other
+#'   original columns. Rows with missing `time` or `event`, or negative
+#'   `time`, are removed.
+#'
+#' @examples
+#' data(motors, package = "MASS")
+#' d <- prepare_data(
+#'   data      = motors,
+#'   time_col  = "time",
+#'   event_col = "cens",
+#'   group_col = "temp"
+#' )
+#' head(d)
+#'
+#' @seealso [summarize_data()], [estimate_lambda()]
+#' @export
 prepare_data <- function(data, time_col, event_col, group_col = NULL) {
   if (!is.data.frame(data)) stop("'data' must be a data.frame.")
   if (!time_col %in% names(data)) stop("Column '", time_col, "' not found.")
@@ -42,17 +78,36 @@ prepare_data <- function(data, time_col, event_col, group_col = NULL) {
   d
 }
 
+#' Summarize a prepared dataset
+#'
+#' Produces a one-row summary of the prepared data frame: total number of
+#' units, number of observed events, number of censored units, censoring
+#' percentage, and minimum / maximum observed times. Useful as a quick
+#' sanity check before fitting any model.
+#'
+#' @param d A prepared `data.frame`, as returned by [prepare_data()].
+#'
+#' @return A one-row `data.frame` with columns `n_total`, `n_events`,
+#'   `n_censored`, `pct_censored`, `time_min` and `time_max`.
+#'
+#' @examples
+#' data(motors, package = "MASS")
+#' d <- prepare_data(motors, "time", "cens", "temp")
+#' summarize_data(d)
+#'
+#' @seealso [prepare_data()]
+#' @export
 summarize_data <- function(d) {
   if (!is.data.frame(d) || !all(c("time", "event") %in% names(d))) {
     stop("'d' must contain 'time' and 'event' columns. ",
          "Use prepare_data() first.")
   }
   data.frame(
-    n_total     = nrow(d),
-    n_events    = sum(d$event == 1L),
-    n_censored  = sum(d$event == 0L),
+    n_total      = nrow(d),
+    n_events     = sum(d$event == 1L),
+    n_censored   = sum(d$event == 0L),
     pct_censored = round(100 * mean(d$event == 0L), 1),
-    time_min    = min(d$time),
-    time_max    = max(d$time)
+    time_min     = min(d$time),
+    time_max     = max(d$time)
   )
 }
