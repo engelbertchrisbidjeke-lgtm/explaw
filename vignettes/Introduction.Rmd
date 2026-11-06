@@ -1,5 +1,5 @@
 ---
-title: "Introduction"
+title: "Introduction to explaw"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Introduction}
@@ -10,10 +10,170 @@ vignette: >
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 4
 )
 ```
 
 ```{r setup}
 library(explaw)
+library(ggplot2)
+data(motors, package = "MASS")
 ```
+
+# Practical Workflow
+
+This vignette demonstrates a complete reliability analysis using `explaw` on the `motors` dataset (40 motors tested at different temperatures, times in hours, right-censored).
+
+## 1. Prepare Data
+
+```{r prepare}
+d <- prepare_data(motors, time_col = "time", event_col = "cens", group_col = "temp")
+head(d)
+```
+
+```{r summarize}
+summarize_data(d)
+```
+
+## 2. Quick Overview
+
+```{r overview}
+indicators_table(d)
+```
+
+## 3. Core Estimation
+
+```{r estimation}
+# Total exposure time
+exposure_time(d)
+
+# Failure rate (MLE) with events & exposure
+estimate_lambda(d)
+
+# Exact 95% confidence intervals for lambda and mean lifetime
+confidence_interval(d)
+
+# Different confidence level
+confidence_interval(d, level = 0.90)
+```
+
+## 4. Reliability Indicators
+
+```{r indicators}
+# Mean & median lifetime
+mean_lifetime(d)
+median_lifetime(d)
+
+# Key quantiles (B10, median, B90)
+quantile_lifetime(d)
+
+# Custom quantiles
+quantile_lifetime(d, p = c(0.01, 0.10, 0.50, 0.90, 0.99))
+```
+
+```{r survival-prob}
+# Survival & failure probabilities at specific times
+survival_prob(d, t = c(1000, 2000, 4000, 8000))
+```
+
+```{r expected-failures}
+# Expected failures in a fleet of 500 units
+expected_failures(d, fleet_size = 500, t = c(1000, 2000, 4000, 8000))
+```
+
+## 5. Group Comparison
+
+```{r group-comparison}
+compare_groups(d)
+```
+
+## 6. Model Checking
+
+```{r check-exp}
+# Kolmogorov-Smirnov test
+check_exponential(d)
+```
+
+```{r qq-plot, fig.cap = "Q-Q plot vs exponential distribution"}
+plot_qq(d)
+```
+
+## 7. Visualization
+
+```{r plot-survival, fig.cap = "Survival probability curve"}
+plot_survival(d)
+```
+
+```{r plot-failures, fig.cap = "Expected cumulative failures (fleet of 500)"}
+plot_failures(d, fleet_size = 500)
+```
+
+```{r plot-groups, fig.cap = "Survival curves by temperature group"}
+plot_groups(d)
+```
+
+## 8. Customizing Plots
+
+All plots return `ggplot` objects — extend them with standard `ggplot2` syntax:
+
+```{r customize, fig.cap = "Customized survival plot"}
+plot_survival(d) +
+  labs(title = "Motor Survival (Exponential Fit)",
+       subtitle = "Data: motors dataset",
+       x = "Operating Time (hours)",
+       y = "Reliability R(t)") +
+  theme_bw() +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+## 9. Save Plots
+
+```{r save-plots, eval = FALSE}
+p <- plot_survival(d)
+ggsave("survival.png", p, width = 6, height = 4, dpi = 300)
+
+p <- plot_groups(d)
+ggsave("groups.png", p, width = 7, height = 5, dpi = 300)
+```
+
+---
+
+## Complete Script
+
+```r
+library(explaw)
+data(motors, package = "MASS")
+
+d <- prepare_data(motors, "time", "cens", "temp")
+
+# Report
+indicators_table(d)
+
+# Check assumption
+check_exponential(d)$conclusion
+plot_qq(d)
+
+# Visualize
+plot_survival(d)
+plot_groups(d)
+plot_failures(d, fleet_size = 500)
+```
+
+---
+
+## Key Takeaways
+
+| Step | Function | Output |
+|------|----------|--------|
+| Prepare | `prepare_data()` | Clean `data.frame` with `time`, `event`, `group` |
+| Summarize | `summarize_data()` | One-row overview |
+| Report | `indicators_table()` | 12-column executive summary |
+| Estimate | `estimate_lambda()`, `confidence_interval()` | λ, exposure, exact CIs |
+| Indicators | `mean_lifetime()`, `quantile_lifetime()`, `survival_prob()`, `expected_failures()` | Derived metrics |
+| Groups | `compare_groups()`, `plot_groups()` | Per-group comparison |
+| Diagnose | `check_exponential()`, `plot_qq()` | Goodness-of-fit test & visual |
+| Plot | `plot_survival()`, `plot_failures()`, `plot_groups()`, `plot_qq()` | Publication-ready `ggplot` objects |
+
+All functions accept the prepared data frame `d` as first argument. The workflow is linear: prepare → estimate → check → report → visualize.
