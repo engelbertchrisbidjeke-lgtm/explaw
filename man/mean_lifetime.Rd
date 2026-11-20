@@ -11,7 +11,7 @@ mean_lifetime(d)
 }
 \value{
 A single positive `numeric` (mean lifetime, in the same time
-  unit as `d$time`). Returns `Inf` with a warning if no event was
+  unit as `d$time`). Returns `Inf` with a single warning if no event was
   observed.
 }
 \description{

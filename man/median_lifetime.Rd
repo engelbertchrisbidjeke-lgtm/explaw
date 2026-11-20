@@ -11,7 +11,7 @@ median_lifetime(d)
 }
 \value{
 A single positive `numeric` (median lifetime). Returns `Inf`
-  with a warning if no event was observed.
+  with a single warning if no event was observed.
 }
 \description{
 Returns the median lifetime \eqn{\ln(2)/\lambda}: the time at which half

@@ -21,6 +21,11 @@ group, computes the number of events, exposure time, failure rate,
 mean lifetime, median and B10 life. Useful to spot which lot or test
 condition is the least reliable.
 }
+\details{
+Rows whose group is `NA` are ignored. Groups are returned in sorted
+order (not in order of appearance). A group with no observed failure
+has a rate of `0` and infinite lifetimes, and triggers one warning.
+}
 \examples{
 data(motors, package = "MASS")
 d <- prepare_data(motors, "time", "cens", "temp")

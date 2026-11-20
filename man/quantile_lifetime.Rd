@@ -9,13 +9,13 @@ quantile_lifetime(d, p = c(0.1, 0.5, 0.9))
 \arguments{
 \item{d}{A prepared `data.frame`, as returned by [prepare_data()].}
 
-\item{p}{Numeric vector of probabilities, each strictly between 0 and 1.
-Default is `c(0.10, 0.50, 0.90)`.}
+\item{p}{Numeric vector of probabilities, each strictly between 0 and 1
+(no `NA`). Default is `c(0.10, 0.50, 0.90)`.}
 }
 \value{
 A `data.frame` with columns `p` (input probabilities) and
   `time` (corresponding lifetimes). If no event was observed, all
-  lifetimes are `Inf` and a warning is issued.
+  lifetimes are `Inf` and a single warning is issued.
 }
 \description{
 Returns the time at which a given proportion `p` of units is expected to

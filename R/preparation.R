@@ -3,24 +3,37 @@
 #' Standardizes a raw data frame so that all other functions in the package
 #' can use a common format. Renames the time, event and (optional) group
 #' columns to `time`, `event` and `group`, checks their types, removes
-#' invalid rows (missing values, negative times), and puts the key columns
-#' first.
+#' invalid rows (missing, infinite or negative times, missing events), and
+#' puts the key columns first.
 #'
 #' @param data A `data.frame` containing at least a time column and an
 #'   event column.
 #' @param time_col Character. Name of the column holding the observed
-#'   durations. Must be numeric and non-negative.
+#'   durations. Must be numeric and non-negative. Rows with a missing,
+#'   infinite or negative duration are removed.
 #' @param event_col Character. Name of the column holding the event
-#'   indicator. Must contain only `0` (censored) and `1` (event observed).
-#'   `NA` values are tolerated and removed.
+#'   indicator. Must contain only `0` (censored) and `1` (event observed);
+#'   numeric, logical, factor or character columns whose values are `0`
+#'   and `1` are accepted (a factor is read through its labels, not its
+#'   internal codes). `NA` values are tolerated and removed.
 #' @param group_col Character or `NULL` (default). Optional name of a
 #'   grouping column (e.g. production lot, test condition). When supplied,
 #'   it is renamed to `group`.
 #'
 #' @return A `data.frame` with at least the columns `time` and `event`
 #'   (and `group` if `group_col` is provided), followed by all other
-#'   original columns. Rows with missing `time` or `event`, or negative
-#'   `time`, are removed.
+#'   original columns. Rows with missing or infinite `time`, negative
+#'   `time`, or missing `event` are removed.
+#'
+#' @details
+#' If `data` already contains a column named `time`, `event` (or `group`
+#' when `group_col` is supplied) that is not the one you designated, it is
+#' replaced by the standardized column and a warning is issued, so that no
+#' column is overwritten silently.
+#'
+#' The function stops with an error if the inputs are invalid (missing
+#' column, non-numeric time, `event` outside `{0, 1}`) or if no valid row
+#' remains after cleaning.
 #'
 #' @examples
 #' data(motors, package = "MASS")
@@ -52,28 +65,40 @@ prepare_data <- function(data, time_col, event_col, group_col = NULL) {
     stop("'", time_col, "' must be numeric.")
   }
 
-  event_vals <- unique(data[[event_col]])
-  event_vals <- event_vals[!is.na(event_vals)]
-  if (!all(event_vals %in% c(0, 1))) {
+  # Event indicator: factors are read through their labels, never their codes
+  ev_raw <- data[[event_col]]
+  if (is.factor(ev_raw)) ev_raw <- as.character(ev_raw)
+  ev <- suppressWarnings(as.numeric(ev_raw))
+  if (any(is.na(ev) & !is.na(ev_raw)) || !all(ev[!is.na(ev)] %in% c(0, 1))) {
     stop("'", event_col, "' must contain only 0 and 1 (NA allowed).")
   }
 
-  d <- data
-  d$time <- as.numeric(data[[time_col]])
-  d$event <- as.integer(data[[event_col]])
-  if (time_col != "time") d[[time_col]] <- NULL
-  if (event_col != "event") d[[event_col]] <- NULL
-
-  if (!is.null(group_col)) {
-    d$group <- data[[group_col]]
-    if (group_col != "group") d[[group_col]] <- NULL
+  # Other columns; existing 'time' / 'event' / 'group' columns that were not
+  # designated by the user are replaced, with a warning
+  others    <- setdiff(names(data), c(time_col, event_col, group_col))
+  new_names <- c("time", "event", if (!is.null(group_col)) "group")
+  clash     <- intersect(new_names, others)
+  if (length(clash) > 0) {
+    warning("Column(s) ", paste0("'", clash, "'", collapse = ", "),
+            " already present in 'data' and not used as time/event/group: ",
+            "replaced by the standardized column(s).")
+    others <- setdiff(others, clash)
   }
 
-  d <- d[!is.na(d$time) & !is.na(d$event) & d$time >= 0, , drop = FALSE]
+  # Build the result from scratch (no in-place renaming)
+  d <- data.frame(
+    time  = as.numeric(data[[time_col]]),
+    event = as.integer(ev)
+  )
+  if (!is.null(group_col)) d$group <- data[[group_col]]
+  for (nm in others) d[[nm]] <- data[[nm]]
 
-  others <- setdiff(names(d), c("time", "event", "group"))
-  order_cols <- c(intersect(c("time", "event", "group"), names(d)), others)
-  d <- d[, order_cols, drop = FALSE]
+  keep <- is.finite(d$time) & d$time >= 0 & !is.na(d$event)
+  if (!any(keep)) {
+    stop("No valid row left after removing missing, infinite or negative ",
+         "times and missing events.")
+  }
+  d <- d[keep, , drop = FALSE]
   rownames(d) <- NULL
   d
 }

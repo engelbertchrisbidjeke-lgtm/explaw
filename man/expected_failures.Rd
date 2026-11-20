@@ -9,14 +9,18 @@ expected_failures(d, fleet_size, t)
 \arguments{
 \item{d}{A prepared `data.frame`, as returned by [prepare_data()].}
 
-\item{fleet_size}{Numeric. Size of the fleet (number of units).}
+\item{fleet_size}{Numeric. Size of the fleet (number of units): a single
+finite positive number.}
 
-\item{t}{Numeric vector of non-negative times, in the same time unit as
-`d$time`.}
+\item{t}{Numeric vector of non-negative times (no `NA`), in the same
+time unit as `d$time`. An empty vector is accepted and gives a
+zero-row result.}
 }
 \value{
 A `data.frame` with columns `fleet_size`, `t` and
   `expected_fail`, giving the expected number of failures at each time.
+  If no event was observed, a warning is issued (the fitted rate is
+  `0`).
 }
 \description{
 For a fleet of identical units, returns the expected number of failures

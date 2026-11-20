@@ -4,13 +4,17 @@
 \alias{plot_survival}
 \title{Plot survival probability over time}
 \usage{
-plot_survival(d, t_max = NULL)
+plot_survival(d, t_max = NULL, time_unit = NULL)
 }
 \arguments{
 \item{d}{A prepared `data.frame`, as returned by [prepare_data()].}
 
 \item{t_max}{Numeric or `NULL`. Upper bound of the time axis. Defaults
 to the maximum observed time in `d`.}
+
+\item{time_unit}{Character or `NULL`. Unit of time shown in the axis
+label and subtitle (e.g. `"hours"`). If `NULL` (default), no unit is
+displayed in the axis label and the subtitle reads "per unit of time".}
 }
 \value{
 A `ggplot` object. It can be printed, saved with

@@ -9,13 +9,15 @@ survival_prob(d, t)
 \arguments{
 \item{d}{A prepared `data.frame`, as returned by [prepare_data()].}
 
-\item{t}{Numeric vector of non-negative times, in the same time unit as
-`d$time`.}
+\item{t}{Numeric vector of non-negative times (no `NA`), in the same
+time unit as `d$time`. An empty vector is accepted and gives a
+zero-row result.}
 }
 \value{
 A `data.frame` with three columns: `t` (input times), `surv`
   (survival probability, between 0 and 1) and `failure` (failure
-  probability, equal to `1 - surv`).
+  probability, equal to `1 - surv`). If no event was observed, a
+  warning is issued (the fitted rate is `0`).
 }
 \description{
 For each time `t`, returns the probability that a unit is still running

@@ -11,11 +11,14 @@ prepare_data(data, time_col, event_col, group_col = NULL)
 event column.}
 
 \item{time_col}{Character. Name of the column holding the observed
-durations. Must be numeric and non-negative.}
+durations. Must be numeric and non-negative. Rows with a missing,
+infinite or negative duration are removed.}
 
 \item{event_col}{Character. Name of the column holding the event
-indicator. Must contain only `0` (censored) and `1` (event observed).
-`NA` values are tolerated and removed.}
+indicator. Must contain only `0` (censored) and `1` (event observed);
+numeric, logical, factor or character columns whose values are `0`
+and `1` are accepted (a factor is read through its labels, not its
+internal codes). `NA` values are tolerated and removed.}
 
 \item{group_col}{Character or `NULL` (default). Optional name of a
 grouping column (e.g. production lot, test condition). When supplied,
@@ -24,15 +27,25 @@ it is renamed to `group`.}
 \value{
 A `data.frame` with at least the columns `time` and `event`
   (and `group` if `group_col` is provided), followed by all other
-  original columns. Rows with missing `time` or `event`, or negative
-  `time`, are removed.
+  original columns. Rows with missing or infinite `time`, negative
+  `time`, or missing `event` are removed.
 }
 \description{
 Standardizes a raw data frame so that all other functions in the package
 can use a common format. Renames the time, event and (optional) group
 columns to `time`, `event` and `group`, checks their types, removes
-invalid rows (missing values, negative times), and puts the key columns
-first.
+invalid rows (missing, infinite or negative times, missing events), and
+puts the key columns first.
+}
+\details{
+If `data` already contains a column named `time`, `event` (or `group`
+when `group_col` is supplied) that is not the one you designated, it is
+replaced by the standardized column and a warning is issued, so that no
+column is overwritten silently.
+
+The function stops with an error if the inputs are invalid (missing
+column, non-numeric time, `event` outside `{0, 1}`) or if no valid row
+remains after cleaning.
 }
 \examples{
 data(motors, package = "MASS")

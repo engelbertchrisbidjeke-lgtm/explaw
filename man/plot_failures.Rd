@@ -4,7 +4,7 @@
 \alias{plot_failures}
 \title{Plot expected cumulative failures in a fleet}
 \usage{
-plot_failures(d, fleet_size = 1000, t_max = NULL)
+plot_failures(d, fleet_size = 1000, t_max = NULL, time_unit = NULL)
 }
 \arguments{
 \item{d}{A prepared `data.frame`, as returned by [prepare_data()].}
@@ -13,6 +13,9 @@ plot_failures(d, fleet_size = 1000, t_max = NULL)
 
 \item{t_max}{Numeric or `NULL`. Upper bound of the time axis. Defaults
 to the maximum observed time in `d`.}
+
+\item{time_unit}{Character or `NULL`. Unit of time shown in the axis
+label (e.g. `"hours"`). If `NULL` (default), no unit is displayed.}
 }
 \value{
 A `ggplot` object.

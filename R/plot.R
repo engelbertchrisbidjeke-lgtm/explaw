@@ -8,6 +8,10 @@
 #' @param t_max Numeric or `NULL`. Upper bound of the time axis. Defaults
 #'   to the maximum observed time in `d`.
 #'
+#' @param time_unit Character or `NULL`. Unit of time shown in the axis
+#'   label and subtitle (e.g. `"hours"`). If `NULL` (default), no unit is
+#'   displayed in the axis label and the subtitle reads "per unit of time".
+#'
 #' @return A `ggplot` object. It can be printed, saved with
 #'   [ggplot2::ggsave()], or further customized with `+`.
 #'
@@ -19,11 +23,9 @@
 #'
 #' @seealso [plot_failures()], [plot_groups()], [survival_prob()]
 #' @export
-plot_survival <- function(d, t_max = NULL) {
-  if (!is.data.frame(d) || !all(c("time", "event") %in% names(d))) {
-    stop("'d' must contain 'time' and 'event' columns. ",
-         "Use prepare_data() first.")
-  }
+plot_survival <- function(d, t_max = NULL, time_unit = NULL) {
+  .validate_d(d)
+  unit_txt <- if (is.null(time_unit)) "" else paste0(" (", time_unit, ")")
   if (is.null(t_max)) t_max <- max(d$time)
   if (!is.numeric(t_max) || length(t_max) != 1 || t_max <= 0) {
     stop("'t_max' must be a single positive number.")
@@ -35,8 +37,11 @@ plot_survival <- function(d, t_max = NULL) {
     ggplot2::geom_line(color = "steelblue", linewidth = 1) +
     ggplot2::labs(
       title = "Survival probability",
-      subtitle = sprintf("lambda = %.5f per hour", lambda),
-      x = "Time (hours)",
+      subtitle = sprintf(
+        "lambda = %.5f per %s", lambda,
+        if (is.null(time_unit)) "unit of time" else time_unit
+      ),
+      x = paste0("Time", unit_txt),
       y = "P(still running)"
     ) +
     ggplot2::theme_minimal()
@@ -53,6 +58,9 @@ plot_survival <- function(d, t_max = NULL) {
 #' @param t_max Numeric or `NULL`. Upper bound of the time axis. Defaults
 #'   to the maximum observed time in `d`.
 #'
+#' @param time_unit Character or `NULL`. Unit of time shown in the axis
+#'   label (e.g. `"hours"`). If `NULL` (default), no unit is displayed.
+#'
 #' @return A `ggplot` object.
 #'
 #' @examples
@@ -63,13 +71,12 @@ plot_survival <- function(d, t_max = NULL) {
 #'
 #' @seealso [plot_survival()], [expected_failures()]
 #' @export
-plot_failures <- function(d, fleet_size = 1000, t_max = NULL) {
-  if (!is.data.frame(d) || !all(c("time", "event") %in% names(d))) {
-    stop("'d' must contain 'time' and 'event' columns. ",
-         "Use prepare_data() first.")
-  }
+plot_failures <- function(d, fleet_size = 1000, t_max = NULL,
+                          time_unit = NULL) {
+  .validate_d(d)
+  unit_txt <- if (is.null(time_unit)) "" else paste0(" (", time_unit, ")")
   if (!is.numeric(fleet_size) || length(fleet_size) != 1 ||
-      fleet_size <= 0) {
+      !is.finite(fleet_size) || fleet_size <= 0) {
     stop("'fleet_size' must be a single positive number.")
   }
   if (is.null(t_max)) t_max <- max(d$time)
@@ -85,8 +92,12 @@ plot_failures <- function(d, fleet_size = 1000, t_max = NULL) {
   ggplot2::ggplot(df, ggplot2::aes(x = t, y = fails)) +
     ggplot2::geom_line(color = "darkorange", linewidth = 1) +
     ggplot2::labs(
-      title = sprintf("Expected failures in a fleet of %d motors", fleet_size),
-      x = "Time (hours)",
+      title = paste0(
+        "Expected failures in a fleet of ",
+        format(fleet_size, big.mark = ",", scientific = FALSE, trim = TRUE),
+        " units"
+      ),
+      x = paste0("Time", unit_txt),
       y = "Expected number of failures"
     ) +
     ggplot2::theme_minimal()
@@ -102,6 +113,9 @@ plot_failures <- function(d, fleet_size = 1000, t_max = NULL) {
 #' @param t_max Numeric or `NULL`. Upper bound of the time axis. Defaults
 #'   to the maximum observed time in `d`.
 #'
+#' @param time_unit Character or `NULL`. Unit of time shown in the axis
+#'   label (e.g. `"hours"`). If `NULL` (default), no unit is displayed.
+#'
 #' @return A `ggplot` object with one colored line per group.
 #'
 #' @examples
@@ -112,24 +126,25 @@ plot_failures <- function(d, fleet_size = 1000, t_max = NULL) {
 #'
 #' @seealso [plot_survival()], [compare_groups()]
 #' @export
-plot_groups <- function(d, t_max = NULL) {
+plot_groups <- function(d, t_max = NULL, time_unit = NULL) {
   if (!is.data.frame(d) ||
       !all(c("time", "event", "group") %in% names(d))) {
     stop("'d' must contain 'time', 'event' and 'group' columns. ",
          "Use prepare_data(..., group_col = ...) first.")
   }
+  .validate_d(d)
+  unit_txt <- if (is.null(time_unit)) "" else paste0(" (", time_unit, ")")
   if (is.null(t_max)) t_max <- max(d$time)
   if (!is.numeric(t_max) || length(t_max) != 1 || t_max <= 0) {
     stop("'t_max' must be a single positive number.")
   }
-  groups <- unique(d$group)
-  groups <- groups[!is.na(groups)]
+  groups <- sort(unique(d$group[!is.na(d$group)]))
   if (length(groups) == 0) {
     stop("'group' column contains only NA.")
   }
   t_seq <- seq(0, t_max, length.out = 200)
   rows <- lapply(groups, function(g) {
-    sub <- d[d$group == g, , drop = FALSE]
+    sub <- d[which(d$group == g), , drop = FALSE]
     lambda <- estimate_lambda(sub)$lambda
     data.frame(
       t     = t_seq,
@@ -142,7 +157,7 @@ plot_groups <- function(d, t_max = NULL) {
     ggplot2::geom_line(linewidth = 1) +
     ggplot2::labs(
       title = "Survival probability by group",
-      x = "Time (hours)",
+      x = paste0("Time", unit_txt),
       y = "P(still running)",
       color = "Group"
     ) +
@@ -156,7 +171,12 @@ plot_groups <- function(d, t_max = NULL) {
 #' dashed line, the exponential model is a plausible fit. Curvature
 #' suggests wear-out or infant-mortality patterns.
 #'
+#' The rate used is the same as in [estimate_lambda()]: number of failures
+#' divided by the total exposure time (censored units included).
+#'
 #' @param d A prepared `data.frame`, as returned by [prepare_data()].
+#' @param time_unit Character or `NULL`. Unit of time shown in the axis
+#'   labels (e.g. `"hours"`). If `NULL` (default), no unit is displayed.
 #'
 #' @return A `ggplot` object.
 #'
@@ -168,16 +188,14 @@ plot_groups <- function(d, t_max = NULL) {
 #'
 #' @seealso [check_exponential()]
 #' @export
-plot_qq <- function(d) {
-  if (!is.data.frame(d) || !all(c("time", "event") %in% names(d))) {
-    stop("'d' must contain 'time' and 'event' columns. ",
-         "Use prepare_data() first.")
-  }
+plot_qq <- function(d, time_unit = NULL) {
+  .validate_d(d)
+  unit_txt <- if (is.null(time_unit)) "" else paste0(" (", time_unit, ")")
   obs <- d$time[d$event == 1L]
   if (length(obs) < 3) {
     stop("Not enough observed failures (need at least 3) for a Q-Q plot.")
   }
-  lambda <- 1 / mean(obs)
+  lambda <- estimate_lambda(d)$lambda
   n <- length(obs)
   probs <- (seq_len(n) - 0.5) / n
   theo <- -log(1 - probs) / lambda
@@ -192,8 +210,8 @@ plot_qq <- function(d) {
     ggplot2::labs(
       title = "Q-Q plot vs exponential distribution",
       subtitle = "Points close to the line suggest an exponential fit",
-      x = "Theoretical quantiles (hours)",
-      y = "Observed lifetimes (hours)"
+      x = paste0("Theoretical quantiles", unit_txt),
+      y = paste0("Observed lifetimes", unit_txt)
     ) +
     ggplot2::theme_minimal()
 }

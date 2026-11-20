@@ -14,8 +14,8 @@ A `list` with four elements:
   \describe{
     \item{`statistic`}{Numeric. Kolmogorov-Smirnov test statistic, or
       `NA` if too few observed failures.}
-    \item{`p_value`}{Numeric. Test p-value, or `NA` if too few
-      observed failures.}
+    \item{`p_value`}{Numeric. Test p-value (see Details), or `NA` if
+      too few observed failures.}
     \item{`n_observed`}{Integer. Number of uncensored observations
       used in the test.}
     \item{`conclusion`}{Character. Ready-to-read sentence stating
@@ -26,12 +26,31 @@ A `list` with four elements:
 }
 \description{
 Tests whether the observed lifetimes (uncensored units only) are
-compatible with an exponential distribution, using a
-Kolmogorov-Smirnov test against the fitted exponential distribution.
+compatible with an exponential distribution, using the
+Kolmogorov-Smirnov distance to the fitted exponential distribution.
+The rate used is the same as in [estimate_lambda()] (number of failures
+divided by total exposure time).
 A small p-value (typically below 0.05) means the exponential model
 is rejected, and a more flexible model (Weibull, gamma, log-normal)
 should be considered. This is a diagnostic check, not a formal proof:
 failing to reject does not prove the model is correct.
+}
+\details{
+The way the p-value is computed depends on the data:
+\itemize{
+  \item **No censored unit**: the rate is estimated from the very
+    sample being tested, which makes the classical Kolmogorov-Smirnov
+    p-value too conservative. A Lilliefors-type correction is applied:
+    the p-value is obtained from a simulated null distribution (5000
+    samples of the same size, fixed internal seed, computed once per
+    sample size). Your own random-number generator state is left
+    unchanged.
+  \item **Censored units present**: the classical
+    [stats::ks.test()] p-value is returned, computed on the uncensored
+    lifetimes against the exponential distribution with the rate
+    \eqn{D / E}. It is only an approximation, because censoring is not
+    taken into account in the test.
+}
 }
 \examples{
 data(motors, package = "MASS")
@@ -41,5 +60,5 @@ result$conclusion
 
 }
 \seealso{
-[plot_qq()]
+[plot_qq()], [estimate_lambda()]
 }

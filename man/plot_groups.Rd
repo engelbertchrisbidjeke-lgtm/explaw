@@ -4,7 +4,7 @@
 \alias{plot_groups}
 \title{Plot survival curves by group}
 \usage{
-plot_groups(d, t_max = NULL)
+plot_groups(d, t_max = NULL, time_unit = NULL)
 }
 \arguments{
 \item{d}{A prepared `data.frame` that also contains a `group` column,
@@ -12,6 +12,9 @@ as produced by `prepare_data(..., group_col = ...)`.}
 
 \item{t_max}{Numeric or `NULL`. Upper bound of the time axis. Defaults
 to the maximum observed time in `d`.}
+
+\item{time_unit}{Character or `NULL`. Unit of time shown in the axis
+label (e.g. `"hours"`). If `NULL` (default), no unit is displayed.}
 }
 \value{
 A `ggplot` object with one colored line per group.

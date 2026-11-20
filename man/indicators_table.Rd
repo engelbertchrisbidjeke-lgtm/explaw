@@ -4,15 +4,21 @@
 \alias{indicators_table}
 \title{Full reliability indicator table}
 \usage{
-indicators_table(d)
+indicators_table(d, level = 0.95)
 }
 \arguments{
 \item{d}{A prepared `data.frame`, as returned by [prepare_data()].}
+
+\item{level}{Numeric. Confidence level of the intervals, a single number
+strictly between 0 and 1. Default is `0.95`. See
+[confidence_interval()].}
 }
 \value{
 A one-row `data.frame` with columns `n_total`, `n_events`,
   `n_censored`, `exposure`, `lambda`, `lambda_lower`, `lambda_upper`,
-  `mean_life`, `mean_lower`, `mean_upper`, `median` and `b10`.
+  `mean_life`, `mean_lower`, `mean_upper`, `median` and `b10`. If no
+  event was observed, `mean_life`, `median` and `b10` are `Inf`, the
+  upper bound of `lambda` is finite, and a single warning is issued.
 }
 \description{
 Assembles in a single-row `data.frame` all the main indicators of the
@@ -25,6 +31,7 @@ function to use for a quick report.
 data(motors, package = "MASS")
 d <- prepare_data(motors, "time", "cens", "temp")
 indicators_table(d)
+indicators_table(d, level = 0.90)
 
 }
 \seealso{

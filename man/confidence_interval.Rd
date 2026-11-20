@@ -7,10 +7,13 @@
 confidence_interval(d, level = 0.95)
 }
 \arguments{
-\item{d}{A prepared `data.frame`, as returned by [prepare_data()].}
+\item{d}{A prepared `data.frame`, as returned by [prepare_data()]. It
+must contain a `time` column (numeric, finite, non-negative) and an
+`event` column (only `0` and `1`, no `NA`). Otherwise the function
+stops with an error.}
 
-\item{level}{Numeric. Confidence level, strictly between 0 and 1.
-Default is `0.95`.}
+\item{level}{Numeric. Confidence level, a single number strictly
+between 0 and 1 (not `NA`). Default is `0.95`.}
 }
 \value{
 A one-row `data.frame` with four columns:
@@ -20,8 +23,8 @@ A one-row `data.frame` with four columns:
     \item{`mean_lower`, `mean_upper`}{Bounds of the confidence
       interval for the mean lifetime, in the same time unit as `d$time`.}
   }
-  If no failure is observed, all bounds are returned as `0` or `Inf`
-  and a warning is issued.
+  If no failure is observed, `lambda_lower` is `0`, `lambda_upper` is
+  finite, `mean_upper` is `Inf`, and a warning is issued.
 }
 \description{
 Builds an exact confidence interval for \eqn{\lambda} under an
@@ -29,6 +32,18 @@ exponential model, using the pivotal quantity
 \eqn{2 D \lambda \sim \chi^2_{2D}}, where \eqn{D} is the number of
 observed failures. The interval on the mean lifetime \eqn{1/\lambda}
 is derived by inverting the bounds.
+}
+\details{
+When no failure is observed (\eqn{D = 0}), the lower bound of
+\eqn{\lambda} is `0` and the upper bound is the finite value
+\eqn{-\ln(\alpha)/E}, where \eqn{\alpha = (1 - \text{level}) / 2} and
+\eqn{E} is the total exposure time. Accordingly, the mean lifetime
+interval is \eqn{[1/\lambda_{upper}, +\infty)}.
+
+
+The function stops with an error when `level` is invalid, when `d` is
+not a valid prepared data frame, or when the total exposure time is
+zero (no finite bound can be derived in that case).
 }
 \examples{
 data(motors, package = "MASS")

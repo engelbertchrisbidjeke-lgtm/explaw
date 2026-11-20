@@ -7,7 +7,10 @@
 estimate_lambda(d)
 }
 \arguments{
-\item{d}{A prepared `data.frame`, as returned by [prepare_data()].}
+\item{d}{A prepared `data.frame`, as returned by [prepare_data()]. It
+must contain a `time` column (numeric, finite, non-negative) and an
+`event` column (only `0` and `1`, no `NA`). Otherwise the function
+stops with an error.}
 }
 \value{
 A `list` with three elements:
@@ -24,6 +27,12 @@ Computes the maximum-likelihood estimate of the failure rate \eqn{\lambda}
 under an exponential model: \eqn{\hat{\lambda} = D / E}, where \eqn{D}
 is the number of observed failures and \eqn{E} is the total exposure
 time (see [exposure_time()]).
+}
+\details{
+The function stops with an error when `d` is not a valid prepared data
+frame (missing columns, negative or non-finite times, `event` outside
+`{0, 1}`) or when the total exposure time is zero, since \eqn{\lambda}
+cannot be estimated in that case.
 }
 \examples{
 data(motors, package = "MASS")

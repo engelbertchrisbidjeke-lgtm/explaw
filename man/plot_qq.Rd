@@ -4,10 +4,13 @@
 \alias{plot_qq}
 \title{Q-Q plot against the exponential distribution}
 \usage{
-plot_qq(d)
+plot_qq(d, time_unit = NULL)
 }
 \arguments{
 \item{d}{A prepared `data.frame`, as returned by [prepare_data()].}
+
+\item{time_unit}{Character or `NULL`. Unit of time shown in the axis
+labels (e.g. `"hours"`). If `NULL` (default), no unit is displayed.}
 }
 \value{
 A `ggplot` object.
@@ -17,6 +20,10 @@ Compares the observed lifetimes (only uncensored units) to the quantiles
 of the fitted exponential distribution. If the points lie close to the
 dashed line, the exponential model is a plausible fit. Curvature
 suggests wear-out or infant-mortality patterns.
+}
+\details{
+The rate used is the same as in [estimate_lambda()]: number of failures
+divided by the total exposure time (censored units included).
 }
 \examples{
 data(motors, package = "MASS")
