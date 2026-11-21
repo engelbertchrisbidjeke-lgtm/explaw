@@ -12,9 +12,8 @@ Le modèle exponentiel (taux de défaillance constant, propriété d'absence de 
 ## Installation
 
 ```r
-devtools::install_local("path/to/explaw")
-# ou après build :
-install.packages("explaw_0.1.0.tar.gz", repos = NULL, type = "source")
+install.packages("remotes")
+remotes::install_github("engelbertchrisbidjeke-lgtm/explaw")
 ```
 
 **Dépendances** : `ggplot2` (graphiques), `MASS` (jeu de données `motors` pour exemples/tests).
@@ -25,7 +24,7 @@ install.packages("explaw_0.1.0.tar.gz", repos = NULL, type = "source")
 
 ```r
 library(explaw)
-data(motors, package = "MASS")   # 40 moteurs, temps en heures, censure (1=panne, 0=censuré), groupe temp
+data(motors, package = "MASS")
 
 # 1. Préparer les données
 d <- prepare_data(motors, time_col = "time", event_col = "cens", group_col = "temp")
@@ -63,7 +62,8 @@ Standardisent les données brutes au format canonique (`time`, `event`, `group` 
 **Points clés**  
 - Point d'entrée unique : appeler `prepare_data()` une fois, transmettre son résultat partout.  
 - `group_col` active les fonctions de groupe (`compare_groups()`, `plot_groups()`).  
-- Lignes avec `NA` ou temps < 0 supprimées silencieusement.
+- Lignes avec `NA` ou temps < 0 supprimées silencieusement.  
+- Si `data` contient déjà des colonnes nommées `time`, `event` ou `group` non désignées, elles sont remplacées avec un avertissement.
 
 ---
 
@@ -75,7 +75,7 @@ Quantités fondamentales du modèle exponentiel : temps d'exposition, taux de d�
 |----------|--------|------|
 | `exposure_time(d)` | `numeric` (temps total à risque) | Somme de `time` ; unités censurées contribuent leur temps observé. |
 | `estimate_lambda(d)` | `list(lambda, n_events, exposure)` | MLE : `λ = D / E`. Avertissement si `D = 0` (retourne `lambda = 0`). |
-| `confidence_interval(d, level = 0.95)` | `data.frame(lambda_lower, lambda_upper, mean_lower, mean_upper)` | IC exact via `2 D λ ~ χ²_{2D}`. Si `D = 0` → `[0, Inf]`. |
+| `confidence_interval(d, level = 0.95)` | `data.frame(lambda_lower, lambda_upper, mean_lower, mean_upper)` | IC exact via `2 D λ ~ χ²_{2D}`. Si `D = 0` → `[0, -ln(α)/E]` pour λ, `[1/λ_upper, Inf]` pour la moyenne. |
 
 **Base statistique**  
 - Exposition `E = Σ time_i` (toutes unités).  
@@ -97,14 +97,14 @@ Grandeurs dérivées pour rapport, décision, gestion de flotte.
 | `survival_prob(d, t)` | `data.frame(t, surv, failure)` | Probabilité de fonctionnement aux instants `t`. |
 | `expected_failures(d, fleet_size, t)` | `data.frame(fleet_size, t, expected_fail)` | Dimensionnement pièces de rechange, planification maintenance. |
 | `compare_groups(d)` | `data.frame` (1 ligne/groupe) | Comparaison lots / conditions d'essai. |
-| `indicators_table(d)` | `data.frame` (1 ligne, 12 colonnes) | **Tableau de bord exécutif** — tout en un. |
+| `indicators_table(d, level = 0.95)` | `data.frame` (1 ligne, 12 colonnes) | **Tableau de bord exécutif** — tout en un. |
 
 **Colonnes de `indicators_table()`** : `n_total`, `n_events`, `n_censored`, `exposure`, `lambda`, `lambda_lower`, `lambda_upper`, `mean_life`, `mean_lower`, `mean_upper`, `median`, `b10`.
 
 **Notes**  
 - Toutes retournent `Inf` (avec avertissement) si `D = 0`.  
-- `compare_groups()` requiert colonne `group` issue de `prepare_data(..., group_col = ...)`.  
-- `survival_prob()` et `expected_failures()` acceptent `t` vectoriel.
+- `compare_groups()` requiert colonne `group` issue de `prepare_data(..., group_col = ...)`. Groupes triés alphabétiquement ; groupes `NA` ignorés.  
+- `survival_prob()` et `expected_failures()` acceptent `t` vectoriel (vecteur vide → 0 lignes).
 
 ---
 
@@ -114,12 +114,12 @@ Diagnostics pour juger la tenue de l'hypothèse exponentielle.
 
 | Fonction | Sortie | Interprétation |
 |----------|--------|----------------|
-| `check_exponential(d)` | `list(statistic, p_value, n_observed, conclusion)` | Test KS sur durées non censurées vs exponentielle ajustée. `p < 0.05` → rejeter ; envisager Weibull, gamma, log-normale. |
-| `plot_qq(d)` | `ggplot` | Q-Q plot observé vs théorique exponentiel. Points sur la ligne = bon ajustement ; courbure systématique = misspécification. |
+| `check_exponential(d)` | `list(statistic, p_value, n_observed, conclusion)` | Test KS sur durées non censurées vs exponentielle ajustée. `p < 0.05` → rejeter ; envisager Weibull, gamma, log-normale. Nécessite ≥ 5 pannes observées. |
+| `plot_qq(d)` | `ggplot` | Q-Q plot observé vs théorique exponentiel. Points sur la ligne = bon ajustement ; courbure systématique = misspécification. Nécessite ≥ 3 pannes. |
 
 **Mises en garde**  
-- KS utilise λ *estimé* (pas fixé) → p-values approchées.  
-- Exige ≥ 5 pannes observées ; sinon `NA` + message explicatif.  
+- **Sans censure** : correction Lilliefors (distribution nulle simulée, 5000 échantillons, graine fixe 2024, état RNG utilisateur préservé).  
+- **Avec censure** : `ks.test()` classique sur durées non censurées seulement (approximatif, censure ignorée dans le test).  
 - Ne pas rejeter ≠ preuve d'exponentiel ; seulement absence de preuve forte contre.  
 - Coupler test et `plot_qq()` visuel.
 
@@ -131,12 +131,12 @@ Tous les graphiques retournent des objets `ggplot` — affichables, sauvables (`
 
 | Fonction | Description | Arguments clés |
 |----------|-------------|----------------|
-| `plot_survival(d, t_max = NULL)` | Courbe de survie `S(t) = exp(-λt)` | `t_max` = max observé par défaut. |
-| `plot_failures(d, fleet_size = 1000, t_max = NULL)` | Pannes cumulées attendues `N(t) = fleet_size × (1 - exp(-λt))` | `fleet_size` échelle la courbe ; justification stocks. |
-| `plot_groups(d, t_max = NULL)` | Courbes de survie superposées par groupe | Colonne `group` requise ; courbe la plus pentue = groupe le moins fiable. |
-| `plot_qq(d)` | Q-Q plot vs exponentiel | Voir section 4. |
+| `plot_survival(d, t_max = NULL, time_unit = NULL)` | Courbe de survie `S(t) = exp(-λt)` | `t_max` = max observé par défaut ; `time_unit` pour étiquette axe (ex. `"hours"`). |
+| `plot_failures(d, fleet_size = 1000, t_max = NULL, time_unit = NULL)` | Pannes cumulées attendues `N(t) = fleet_size × (1 - exp(-λt))` | `fleet_size` échelle la courbe ; justification stocks. |
+| `plot_groups(d, t_max = NULL, time_unit = NULL)` | Courbes de survie superposées par groupe | Colonne `group` requise ; courbe la plus pentue = groupe le moins fiable. |
+| `plot_qq(d, time_unit = NULL)` | Q-Q plot vs exponentiel | Voir section 4. |
 
-**Style** : `theme_minimal()`, couleurs steelblue (survie), darkorange (pannes), palette qualitative (groupes), axes étiquetés avec unités (heures par défaut).
+**Style** : `theme_minimal()`, couleurs steelblue (survie), darkorange (pannes), palette qualitative (groupes), axes étiquetés avec unités (heures par défaut si `time_unit` fourni).
 
 ---
 
@@ -192,17 +192,17 @@ plot_failures(d, fleet_size = 500)  # flotte de 500 moteurs
 
 **Aucun événement observé (`D = 0`)**  
 - `estimate_lambda()` → `lambda = 0` + avertissement.  
-- `confidence_interval()` → `[0, Inf]` pour λ et pour la moyenne.  
+- `confidence_interval()` → `[0, -ln(α)/E]` pour λ ; `[1/λ_upper, Inf]` pour la moyenne.  
 - `mean_lifetime()`, `median_lifetime()`, `quantile_lifetime()` → `Inf`.  
 - Seules des *bornes inférieures* sur la durée de vie ont du sens (ex. `exposure_time()` = temps total d'essai sans panne).
 
 **Données censurées**  
 - Censure à droite gérée naturellement : unités censurées apportent leur temps à l'exposition `E` mais pas aux événements `D`.  
-- `prepare_data()` valide que `event` ne contient que 0/1.
+- `prepare_data()` valide que `event` ne contient que 0/1 (facteur lu via ses labels, pas ses codes internes).
 
 **Comparaisons de groupes**  
 - Passer `group_col` à `prepare_data()`.  
-- `compare_groups()` ajuste un λ par groupe.  
+- `compare_groups()` ajuste un λ par groupe (groupe sans événement → `lambda = 0`, `Inf` + avertissement).  
 - `plot_groups()` affiche les courbes de survie côte à côte.
 
 ---
@@ -225,4 +225,4 @@ Apache License 2.0 — voir [LICENSE.md](LICENSE.md).
 
 ---
 
-*Développé avec R ≥ 4.0, `ggplot2`, `roxygen2`.*
+*Développé avec R ≥ 4.1, `ggplot2`, `roxygen2`.*
